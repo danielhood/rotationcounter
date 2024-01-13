@@ -73,6 +73,7 @@ class MainActivity : AppCompatActivity() {
                 .build()
 
             var rotationCount = 0
+            var lastComputedFps = 0f
 
             var frameCounter = 0
             var lastFpsTimestamp = System.currentTimeMillis()
@@ -92,7 +93,7 @@ class MainActivity : AppCompatActivity() {
                 // TODO: analyze image
 
                 // Update counter overlay
-                val counterViewModel = CounterViewModel(rotationCount++)
+                val counterViewModel = CounterViewModel(rotationCount++, lastComputedFps)
                 val counterDrawable = CounterDrawable(counterViewModel)
 
                 //previewView.setOnTouchListener(counterViewModel.counterTouchCallback)
@@ -105,8 +106,8 @@ class MainActivity : AppCompatActivity() {
                     frameCounter = 0
                     val now = System.currentTimeMillis()
                     val delta = now - lastFpsTimestamp
-                    val fps = 1000 * frameCount.toFloat() / delta
-                    Log.d(TAG, "FPS: ${"%.02f".format(fps)}, Rotation Count: $rotationCount")
+                    lastComputedFps = 1000 * frameCount.toFloat() / delta
+                    Log.d(TAG, "FPS: ${"%.02f".format(lastComputedFps)}, Rotation Count: $rotationCount")
                     lastFpsTimestamp = now
                 }
             })
