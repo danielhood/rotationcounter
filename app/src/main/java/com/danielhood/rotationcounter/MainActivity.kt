@@ -62,6 +62,10 @@ class MainActivity : AppCompatActivity() {
 
         val rotationCountStats = RotationCountStats()
         val fpsStats = FpsStats()
+        val viewTarget = ViewTarget(
+            viewBinding.viewFinder.width.toFloat()/2,
+            viewBinding.viewFinder.height.toFloat()/2
+        )
 
         cameraProviderFuture.addListener({
             // Camera provider is now guaranteed to be available
@@ -74,11 +78,20 @@ class MainActivity : AppCompatActivity() {
                 .build()
 
             previewView.setOnTouchListener { v: View, e: MotionEvent ->
-                if (e.action == MotionEvent.ACTION_UP) {
-                    rotationCountStats.rotationCount = 0
-
-                    v.performClick()
+                when (e.action) {
+                    MotionEvent.ACTION_UP -> {
+                        // Rest rotation count (for now)
+                        rotationCountStats.rotationCount = 0
+                    }
+                    MotionEvent.ACTION_DOWN -> {
+                        updateTarget(viewTarget, e.x, e.y)
+                    }
+                    MotionEvent.ACTION_MOVE -> {
+                        updateTarget(viewTarget, e.x, e.y)
+                    }
                 }
+
+                v.performClick()
                 true // return true from the callback to signify the event was handled
             }
 
@@ -95,10 +108,6 @@ class MainActivity : AppCompatActivity() {
 
             previewView.overlay.clear()
             previewView.overlay.add(counterDrawable)
-
-            var frameCounter = 0
-            var lastFpsTimestamp = System.currentTimeMillis()
-            var currentFps: Float
 
             imageAnalysis.setAnalyzer(cameraExecutor) { image ->
                 if (!::bitmapBuffer.isInitialized) {
@@ -118,29 +127,14 @@ class MainActivity : AppCompatActivity() {
                 // Update counter overlay
                 counterViewModel.rotationCount = rotationCountStats.rotationCount++
                 counterViewModel.currentFps = rotationCountStats.lastComputedFps
+                counterViewModel.targetX = viewTarget.x
+                counterViewModel.targetY = viewTarget.y
 
                 previewView.overlay.clear()
                 previewView.overlay.add(counterDrawable)
 
-                if (++frameCounter % 10 == 0) {
-                    frameCounter = 0
-                    val now = System.currentTimeMillis()
-                    val delta = now - lastFpsTimestamp
-                    currentFps = 1000 * 10f / delta
-
-                    Log.d(
-                        TAG,
-                        "FPS: ${"%.02f".format(currentFps)}"
-                    )
-
-                    lastFpsTimestamp = now
-
-                    rotationCountStats.lastComputedFps = currentFps
-                }
-
-
                 // Tick frame
-                //fpsStats.frameTick(rotationCountStats)
+                fpsStats.frameTick(rotationCountStats)
             }
 
             // Create a new camera selector each time, enforcing lens facing
@@ -155,6 +149,17 @@ class MainActivity : AppCompatActivity() {
             preview.setSurfaceProvider(viewBinding.viewFinder.surfaceProvider)
 
         }, ContextCompat.getMainExecutor(this))
+    }
+
+    private fun updateTarget(viewTarget: ViewTarget, x: Float, y: Float) {
+        // Update target rect to tapped point
+        Log.d(
+            TAG,
+            "Tapped point(${x}, ${y})"
+        )
+
+        viewTarget.x = x
+        viewTarget.y = y
     }
 
     override fun onDestroy() {

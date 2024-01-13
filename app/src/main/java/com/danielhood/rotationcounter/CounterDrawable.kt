@@ -39,10 +39,18 @@ class CounterDrawable(counterViewModel: CounterViewModel) : Drawable() {
 
     private val counterViewModel = counterViewModel
 
+    private  val targetRectBuffer= 100f
+
     override fun draw(canvas: Canvas) {
         canvas.drawRect( 10f, 10f, 200f, 50f, counterRectPaint)
         canvas.drawRect( 10f, 70f, 200f, 110f, fpsRectPaint)
-        canvas.drawRect( 400f, 1000f, 600f, 1200f, targetRectPaint)
+
+        canvas.drawRect(
+            counterViewModel.targetX-targetRectBuffer,
+            counterViewModel.targetY-targetRectBuffer,
+            counterViewModel.targetX+targetRectBuffer,
+            counterViewModel.targetY+targetRectBuffer,
+            targetRectPaint)
 
         canvas.drawText(
             counterViewModel.rotationCountString,

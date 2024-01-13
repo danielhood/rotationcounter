@@ -7,6 +7,8 @@ import android.view.View
 class CounterViewModel () {
     var rotationCount: Int = 0
     var currentFps: Float = 0f
+    var targetX: Float = 0f
+    var targetY: Float = 0f
 
     val rotationCountString: String
         get()  = rotationCount.toString()
