@@ -20,10 +20,10 @@ class FpsStats {
             val delta = now - lastFpsTimestamp
             currentFps = 1000 * frameCount.toFloat() / delta
 
-            Log.d(
-                TAG,
-                "FPS: ${"%.02f".format(currentFps)}"
-            )
+            //Log.d(
+            //    TAG,
+            //    "FPS: ${"%.02f".format(currentFps)}"
+            //)
 
             lastFpsTimestamp = now
 

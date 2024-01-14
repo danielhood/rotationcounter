@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.Color
 import android.os.Bundle
 import android.util.Log
 import android.view.MotionEvent
@@ -63,9 +64,13 @@ class MainActivity : AppCompatActivity() {
         val rotationCountStats = RotationCountStats()
         val fpsStats = FpsStats()
         val viewTarget = ViewTarget(
-            viewBinding.viewFinder.width.toFloat()/2,
-            viewBinding.viewFinder.height.toFloat()/2
+            viewBinding.viewFinder.width/2,
+            viewBinding.viewFinder.height/2,
+            1f,
+            1f
         )
+
+        var resetTarget: Boolean = false
 
         cameraProviderFuture.addListener({
             // Camera provider is now guaranteed to be available
@@ -80,14 +85,13 @@ class MainActivity : AppCompatActivity() {
             previewView.setOnTouchListener { v: View, e: MotionEvent ->
                 when (e.action) {
                     MotionEvent.ACTION_UP -> {
-                        // Rest rotation count (for now)
-                        rotationCountStats.rotationCount = 0
+                        resetTarget = true
                     }
                     MotionEvent.ACTION_DOWN -> {
-                        updateTarget(viewTarget, e.x, e.y)
+                        updateTarget(viewTarget, e.x.toInt(), e.y.toInt())
                     }
                     MotionEvent.ACTION_MOVE -> {
-                        updateTarget(viewTarget, e.x, e.y)
+                        updateTarget(viewTarget, e.x.toInt(), e.y.toInt())
                     }
                 }
 
@@ -103,6 +107,7 @@ class MainActivity : AppCompatActivity() {
                 .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
                 .build()
 
+
             val counterViewModel = CounterViewModel()
             val counterDrawable = CounterDrawable(counterViewModel)
 
@@ -117,12 +122,31 @@ class MainActivity : AppCompatActivity() {
                     bitmapBuffer = Bitmap.createBitmap(
                         image.width, image.height, Bitmap.Config.ARGB_8888
                     )
+
+                    viewTarget.updateScaleFactor(
+                        image.width / viewBinding.viewFinder.width.toFloat() ,
+                        image.height / viewBinding.viewFinder.height.toFloat()
+                    )
                 }
 
                 // Copy out RGB bits to our shared buffer
                 image.use { bitmapBuffer.copyPixelsFromBuffer(image.planes[0].buffer) }
 
-                // TODO: analyze image
+                if (resetTarget) {
+                    // Rest rotation count (for now)
+                    rotationCountStats.rotationCount = 0
+                    viewTarget.setTargetColor(bitmapBuffer.getColor(viewTarget.xScaled, viewTarget.yScaled))
+
+                    Log.d(TAG, "targetColor(${viewTarget.targetColor.red()},${viewTarget.targetColor.green()},${viewTarget.targetColor.blue()}) from  viewTarget(${viewTarget.xScaled},${viewTarget.yScaled})")
+
+                    resetTarget = false
+                } else {
+
+                    // TODO: analyze image
+                    //Log.d(TAG, "target(${viewTarget.xScaled},${viewTarget.yScaled})")
+                    val color = bitmapBuffer.getColor(viewTarget.xScaled, viewTarget.yScaled)
+                    //Log.d(TAG, "color(${color.red()},${color.green()},${color.blue()})")
+                }
 
                 // Update counter overlay
                 counterViewModel.rotationCount = rotationCountStats.rotationCount++
@@ -151,7 +175,7 @@ class MainActivity : AppCompatActivity() {
         }, ContextCompat.getMainExecutor(this))
     }
 
-    private fun updateTarget(viewTarget: ViewTarget, x: Float, y: Float) {
+    private fun updateTarget(viewTarget: ViewTarget, x: Int, y: Int) {
         // Update target rect to tapped point
         Log.d(
             TAG,
