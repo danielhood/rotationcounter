@@ -16,11 +16,21 @@ class ViewTarget (private var rotationDegrees: Int, private var imageWidth: Int,
     var yScaled: Int = 0
         private set
 
+    private val targetBuffer = 100
+
+    var bufferX: Int = targetBuffer
+        private set
+
+    var bufferY: Int = targetBuffer
+        private set
+
     var targetColor : Color = Color.valueOf(0f, 0f, 0f)
         private set
 
     private var scaleFactorX: Float = 1f
     private var scaleFactorY: Float = 1f
+
+
 
     init {
         updateScaleFactor()
@@ -33,6 +43,8 @@ class ViewTarget (private var rotationDegrees: Int, private var imageWidth: Int,
 
     fun setTargetColor(color: Color) {
         targetColor = color
+
+        Log.d(TAG, "setTargetColor(${targetColor.red()},${targetColor.green()},${targetColor.blue()}) at (${xScaled},${yScaled})")
     }
 
     fun updateCoordinates(x: Int, y: Int)
@@ -56,6 +68,7 @@ class ViewTarget (private var rotationDegrees: Int, private var imageWidth: Int,
         )
 
         updateScaleFactor()
+        updateScaledCoordinates()
     }
 
     private fun updateScaleFactor() {
@@ -81,14 +94,23 @@ class ViewTarget (private var rotationDegrees: Int, private var imageWidth: Int,
             180 -> {
                 xScaled = (scaleFactorX * (viewWidth - x)).toInt()
                 yScaled = (scaleFactorY * (viewHeight - y)).toInt()
+
+                bufferX = (scaleFactorX * targetBuffer).toInt()
+                bufferY = (scaleFactorY * targetBuffer).toInt()
             }
             90 -> {
                 xScaled = (scaleFactorY * y).toInt()
                 yScaled = (scaleFactorX * (viewWidth - x)).toInt()
+
+                bufferX = (scaleFactorY * targetBuffer).toInt()
+                bufferY = (scaleFactorX * targetBuffer).toInt()
             }
             else -> {
                 xScaled = (scaleFactorX * x).toInt()
                 yScaled = (scaleFactorY * y).toInt()
+
+                bufferX = (scaleFactorX * targetBuffer).toInt()
+                bufferY = (scaleFactorY * targetBuffer).toInt()
             }
         }
 

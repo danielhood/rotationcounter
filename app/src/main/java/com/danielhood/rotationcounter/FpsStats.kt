@@ -6,7 +6,6 @@ class FpsStats {
     private var lastFpsTimestamp = System.currentTimeMillis()
 
     companion object {
-        private const val TAG = "FpsStats"
         private const val frameCount: Int = 10
     }
     fun frameTick(rotationCountStats: RotationCountStats) {
@@ -15,11 +14,6 @@ class FpsStats {
             val now = System.currentTimeMillis()
             val delta = now - lastFpsTimestamp
             currentFps = 1000 * frameCount.toFloat() / delta
-
-            //Log.d(
-            //    TAG,
-            //    "FPS: ${"%.02f".format(currentFps)}"
-            //)
 
             lastFpsTimestamp = now
 

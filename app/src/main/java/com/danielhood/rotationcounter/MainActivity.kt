@@ -9,10 +9,14 @@ import android.util.Log
 import android.view.MotionEvent
 import android.view.View
 import android.widget.Toast
+import androidx.annotation.OptIn
 import androidx.appcompat.app.AppCompatActivity
+import androidx.camera.camera2.interop.ExperimentalCamera2Interop
 import androidx.camera.core.CameraSelector
+import androidx.camera.core.FocusMeteringAction
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
+import androidx.camera.core.SurfaceOrientedMeteringPointFactory
 import androidx.camera.core.resolutionselector.AspectRatioStrategy
 import androidx.camera.core.resolutionselector.ResolutionSelector
 import androidx.camera.lifecycle.ProcessCameraProvider
@@ -55,7 +59,7 @@ class MainActivity : AppCompatActivity() {
         cameraExecutor = Executors.newSingleThreadExecutor()
     }
 
-    private fun startCamera() = viewBinding.viewFinder.post {
+    @OptIn(ExperimentalCamera2Interop::class) private fun startCamera() = viewBinding.viewFinder.post {
         val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
         val previewView: PreviewView = viewBinding.viewFinder
 
@@ -69,7 +73,7 @@ class MainActivity : AppCompatActivity() {
             480
         )
 
-        var resetTarget: Boolean = false
+        var resetTarget = false
 
         cameraProviderFuture.addListener({
             // Camera provider is now guaranteed to be available
@@ -92,6 +96,8 @@ class MainActivity : AppCompatActivity() {
                     }
                     MotionEvent.ACTION_MOVE -> {
                         viewTarget.updateCoordinates(e.x.toInt(), e.y.toInt())
+
+                        viewTarget.setTargetColor(getAverageColorFromBuffer(bitmapBuffer, viewTarget))
                     }
                 }
 
@@ -107,7 +113,6 @@ class MainActivity : AppCompatActivity() {
                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                 .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
                 .build()
-
 
             val counterViewModel = CounterViewModel()
             val counterDrawable = CounterDrawable(counterViewModel)
@@ -148,23 +153,14 @@ class MainActivity : AppCompatActivity() {
                     // Reset rotation count
                     rotationCountStats.rotationCount = 0
 
-                    Log.d(TAG, "scaledTarget(${viewTarget.xScaled},${viewTarget.yScaled})")
-                    //viewTarget.setTargetColor(bitmapBuffer.getColor(viewTarget.xScaled, viewTarget.yScaled))
-                    viewTarget.setTargetColor(getAverageColorFromBuffer(bitmapBuffer, viewTarget))
-
-                    Log.d(TAG, "targetColor(${viewTarget.targetColor.red()},${viewTarget.targetColor.green()},${viewTarget.targetColor.blue()}) at (${viewTarget.xScaled},${viewTarget.yScaled})")
-
                     resetTarget = false
                 } else {
-
-                    // TODO: analyze image
-                    //Log.d(TAG, "target(${viewTarget.xScaled},${viewTarget.yScaled})")
-                    //val color = bitmapBuffer.getColor(viewTarget.xScaled, viewTarget.yScaled)
-                    //Log.d(TAG, "color(${color.red()},${color.green()},${color.blue()})")
+                    val color = getAverageColorFromBuffer(bitmapBuffer, viewTarget)
+                    rotationCountStats.update(colorMatch(color, viewTarget.targetColor))
                 }
 
                 // Update counter overlay
-                counterViewModel.rotationCount = rotationCountStats.rotationCount++
+                counterViewModel.rotationCount = rotationCountStats.rotationCount
                 counterViewModel.currentFps = rotationCountStats.lastComputedFps
                 counterViewModel.targetX = viewTarget.x
                 counterViewModel.targetY = viewTarget.y
@@ -181,8 +177,22 @@ class MainActivity : AppCompatActivity() {
 
             // Apply declared configs to CameraX using the same lifecycle owner
             cameraProvider.unbindAll()
-            cameraProvider.bindToLifecycle(
+            val camera = cameraProvider.bindToLifecycle(
                 this as LifecycleOwner, cameraSelector, preview, imageAnalysis)
+
+            val meteringFactory = SurfaceOrientedMeteringPointFactory(
+                viewBinding.viewFinder.width.toFloat(),
+                viewBinding.viewFinder.height.toFloat()
+            )
+            val point = meteringFactory.createPoint(viewBinding.viewFinder.width.toFloat()/2, viewBinding.viewFinder.height.toFloat()/2)
+            val autoFocusActon = FocusMeteringAction.Builder(point,
+                FocusMeteringAction.FLAG_AF
+                        or FocusMeteringAction.FLAG_AE
+                        or FocusMeteringAction.FLAG_AWB)
+                .apply {
+                    disableAutoCancel() // focus once on launch/rotate
+                }.build()
+            camera.cameraControl.startFocusAndMetering(autoFocusActon)
 
             // Use the camera object to link our preview use case with the view
             preview.setSurfaceProvider(viewBinding.viewFinder.surfaceProvider)
@@ -190,14 +200,24 @@ class MainActivity : AppCompatActivity() {
         }, ContextCompat.getMainExecutor(this))
     }
 
-    private fun getAverageColorFromBuffer(bitmapBuffer: Bitmap, viewTarget: ViewTarget): Color {
-        var r: Float = 0f
-        var g: Float = 0f
-        var b: Float = 0f
+    private fun colorMatch(color: Color, targetColor: Color): Boolean {
+        val colorTolerance = 0.2f
 
-        for (x in viewTarget.xScaled-20..viewTarget.xScaled+20){
-            for (y in viewTarget.yScaled-20..viewTarget.yScaled+20) {
-                var color = bitmapBuffer.getColor(viewTarget.xScaled, viewTarget.yScaled)
+        return (
+                color.red() in targetColor.red()-colorTolerance..targetColor.red()+colorTolerance
+                        && color.green() in targetColor.green()-colorTolerance..targetColor.green()+colorTolerance
+                        && color.blue() in targetColor.blue()-colorTolerance..targetColor.blue()+colorTolerance
+                )
+    }
+
+    private fun getAverageColorFromBuffer(bitmapBuffer: Bitmap, viewTarget: ViewTarget): Color {
+        var r = 0f
+        var g = 0f
+        var b = 0f
+
+        for (x in viewTarget.xScaled-viewTarget.bufferX ..viewTarget.xScaled+viewTarget.bufferX){
+            for (y in viewTarget.yScaled-viewTarget.bufferY..viewTarget.yScaled+viewTarget.bufferY) {
+                val color = bitmapBuffer.getColor(viewTarget.xScaled, viewTarget.yScaled)
                 r = (r + color.red()) / 2
                 g = (g + color.green()) / 2
                 b = (b + color.blue()) / 2

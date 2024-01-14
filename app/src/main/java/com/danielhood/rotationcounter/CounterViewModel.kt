@@ -1,6 +1,6 @@
 package com.danielhood.rotationcounter
 
-class CounterViewModel () {
+class CounterViewModel {
     var rotationCount: Int = 0
     var currentFps: Float = 0f
     var targetX: Int = 0

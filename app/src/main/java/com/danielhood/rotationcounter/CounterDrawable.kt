@@ -7,7 +7,7 @@ import android.graphics.Paint
 import android.graphics.PixelFormat
 import android.graphics.drawable.Drawable
 
-class CounterDrawable(counterViewModel: CounterViewModel) : Drawable() {
+class CounterDrawable(private val counterViewModel: CounterViewModel) : Drawable() {
     private val counterTextPaint = Paint().apply {
         color = Color.DKGRAY
         alpha = 255
@@ -36,8 +36,6 @@ class CounterDrawable(counterViewModel: CounterViewModel) : Drawable() {
         color = Color.CYAN
         alpha = 255
     }
-
-    private val counterViewModel = counterViewModel
 
     private  val targetRectBuffer= 100f
 
@@ -85,6 +83,8 @@ class CounterDrawable(counterViewModel: CounterViewModel) : Drawable() {
         targetRectPaint.colorFilter = colorFilter
     }
 
-    @Deprecated("Deprecated in Java")
+    @Deprecated("Deprecated in Java",
+        ReplaceWith("PixelFormat.TRANSLUCENT", "android.graphics.PixelFormat")
+    )
     override fun getOpacity(): Int = PixelFormat.TRANSLUCENT
 }
