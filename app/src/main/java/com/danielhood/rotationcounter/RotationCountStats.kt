@@ -2,9 +2,9 @@ package com.danielhood.rotationcounter
 
 class RotationCountStats {
     var rotationCount: Int = 0
-    var lastComputedFps: Float = 0f
+    var lastComputedFps: Float = 15.00f
 
-    private var detected = false
+    private var detected = true
 
     fun update(colorMatched: Boolean) {
         // Check if still no match
@@ -22,5 +22,10 @@ class RotationCountStats {
         // Current state is !detected && colorMatched, change to detected and increment count
         detected = true
         rotationCount++
+    }
+
+    fun reset() {
+        detected = true
+        rotationCount = 0
     }
 }

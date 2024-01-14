@@ -11,7 +11,7 @@ class CounterDrawable(private val counterViewModel: CounterViewModel) : Drawable
     private val counterTextPaint = Paint().apply {
         color = Color.DKGRAY
         alpha = 255
-        textSize = 36F
+        textSize = 140F
     }
 
     private val counterRectPaint = Paint().apply {
@@ -19,16 +19,29 @@ class CounterDrawable(private val counterViewModel: CounterViewModel) : Drawable
         color = Color.YELLOW
         alpha = 255
     }
+
+    private val counterCaptionPaint = Paint().apply {
+        color = Color.DKGRAY
+        alpha = 255
+        textSize = 30F
+    }
+
     private val fpsTextPaint = Paint().apply {
         color = Color.DKGRAY
         alpha = 255
-        textSize = 36F
+        textSize = 140F
     }
 
     private val fpsRectPaint = Paint().apply {
         style = Paint.Style.FILL
         color = Color.YELLOW
         alpha = 255
+    }
+
+    private val fpsCaptionPaint = Paint().apply {
+        color = Color.DKGRAY
+        alpha = 255
+        textSize = 30F
     }
 
     private val targetRectPaint = Paint().apply {
@@ -40,8 +53,20 @@ class CounterDrawable(private val counterViewModel: CounterViewModel) : Drawable
     private  val targetRectBuffer= 100f
 
     override fun draw(canvas: Canvas) {
-        canvas.drawRect( 10f, 10f, 200f, 50f, counterRectPaint)
-        canvas.drawRect( 10f, 70f, 200f, 110f, fpsRectPaint)
+        val textWidth = 500f
+        val textMargin = 10f
+        val fpsLeft = canvas.width-textWidth
+        val fpsRight = canvas.width-textMargin
+        val countLeft = textMargin
+        val countRight = textWidth+textMargin
+
+        val textTop = textMargin
+        val textBottom = 160f
+
+        val captionBottom = textTop+30f
+
+        canvas.drawRect( countLeft, textTop, countRight, textBottom, counterRectPaint)
+        canvas.drawRect( fpsLeft, textTop, fpsRight, textBottom, fpsRectPaint)
 
         canvas.drawRect(
             counterViewModel.targetX-targetRectBuffer,
@@ -51,15 +76,27 @@ class CounterDrawable(private val counterViewModel: CounterViewModel) : Drawable
             targetRectPaint)
 
         canvas.drawText(
+            "Count",
+            countLeft+15f, captionBottom,
+            counterCaptionPaint
+        )
+
+        canvas.drawText(
             counterViewModel.rotationCountString,
-            15f, 42f,
+            countLeft+5f, textBottom-8f,
             counterTextPaint
         )
 
         canvas.drawText(
             counterViewModel.currentFpsString,
-            15f, 102f,
+            fpsLeft+5f, textBottom-8f,
             fpsTextPaint
+        )
+
+        canvas.drawText(
+            "FPS",
+            fpsLeft+15f, captionBottom,
+            fpsCaptionPaint
         )
     }
 

@@ -144,15 +144,15 @@ class MainActivity : AppCompatActivity() {
                     viewBinding.viewFinder.width/2,
                     viewBinding.viewFinder.height/2
                     )
+
+                    rotationCountStats.reset()
                 }
 
                 // Copy out RGB bits to our shared buffer
                 image.use { bitmapBuffer.copyPixelsFromBuffer(image.planes[0].buffer) }
 
                 if (resetTarget) {
-                    // Reset rotation count
-                    rotationCountStats.rotationCount = 0
-
+                    rotationCountStats.reset()
                     resetTarget = false
                 } else {
                     val color = getAverageColorFromBuffer(bitmapBuffer, viewTarget)
