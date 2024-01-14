@@ -3,7 +3,6 @@ package com.danielhood.rotationcounter
 import android.Manifest
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
-import android.graphics.Canvas
 import android.graphics.Color
 import android.os.Bundle
 import android.util.Log
@@ -11,7 +10,6 @@ import android.view.MotionEvent
 import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.camera.core.AspectRatio.RATIO_4_3
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
@@ -64,10 +62,11 @@ class MainActivity : AppCompatActivity() {
         val rotationCountStats = RotationCountStats()
         val fpsStats = FpsStats()
         val viewTarget = ViewTarget(
-            viewBinding.viewFinder.width/2,
-            viewBinding.viewFinder.height/2,
-            1f,
-            1f
+            0,
+            640,
+            480,
+            640,
+            480
         )
 
         var resetTarget: Boolean = false
@@ -80,6 +79,7 @@ class MainActivity : AppCompatActivity() {
             val preview = Preview.Builder()
                 .setResolutionSelector(ResolutionSelector.Builder().setAspectRatioStrategy(AspectRatioStrategy.RATIO_4_3_FALLBACK_AUTO_STRATEGY).build())
                 .setTargetRotation(viewBinding.viewFinder.display.rotation)
+                //.setTargetRotation(Surface.ROTATION_0)
                 .build()
 
             previewView.setOnTouchListener { v: View, e: MotionEvent ->
@@ -88,10 +88,10 @@ class MainActivity : AppCompatActivity() {
                         resetTarget = true
                     }
                     MotionEvent.ACTION_DOWN -> {
-                        updateTarget(viewTarget, e.x.toInt(), e.y.toInt())
+                        viewTarget.updateCoordinates(e.x.toInt(), e.y.toInt())
                     }
                     MotionEvent.ACTION_MOVE -> {
-                        updateTarget(viewTarget, e.x.toInt(), e.y.toInt())
+                        viewTarget.updateCoordinates(e.x.toInt(), e.y.toInt())
                     }
                 }
 
@@ -103,6 +103,7 @@ class MainActivity : AppCompatActivity() {
             val imageAnalysis = ImageAnalysis.Builder()
                 .setResolutionSelector(ResolutionSelector.Builder().setAspectRatioStrategy(AspectRatioStrategy.RATIO_4_3_FALLBACK_AUTO_STRATEGY).build())
                 .setTargetRotation(viewBinding.viewFinder.display.rotation)
+                //.setTargetRotation(Surface.ROTATION_0)
                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                 .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
                 .build()
@@ -119,13 +120,24 @@ class MainActivity : AppCompatActivity() {
                     // The image rotation and RGB image buffer are initialized only once
                     // the analyzer has started running
                     imageRotationDegrees = image.imageInfo.rotationDegrees
+
                     bitmapBuffer = Bitmap.createBitmap(
                         image.width, image.height, Bitmap.Config.ARGB_8888
                     )
 
-                    viewTarget.updateScaleFactor(
-                        image.width / viewBinding.viewFinder.width.toFloat() ,
-                        image.height / viewBinding.viewFinder.height.toFloat()
+                    Log.d(TAG, "viewRotation: ${viewBinding.viewFinder.display.rotation}, imageRotation: ${imageRotationDegrees}, image(${image.width},${image.height}), view(${viewBinding.viewFinder.width},${viewBinding.viewFinder.height})")
+
+                    viewTarget.updateImageAndViewSize(
+                        imageRotationDegrees,
+                        image.width,
+                        image.height,
+                        viewBinding.viewFinder.width,
+                        viewBinding.viewFinder.height
+                    )
+
+                    viewTarget.updateCoordinates(
+                    viewBinding.viewFinder.width/2,
+                    viewBinding.viewFinder.height/2
                     )
                 }
 
@@ -133,18 +145,21 @@ class MainActivity : AppCompatActivity() {
                 image.use { bitmapBuffer.copyPixelsFromBuffer(image.planes[0].buffer) }
 
                 if (resetTarget) {
-                    // Rest rotation count (for now)
+                    // Reset rotation count
                     rotationCountStats.rotationCount = 0
-                    viewTarget.setTargetColor(bitmapBuffer.getColor(viewTarget.xScaled, viewTarget.yScaled))
 
-                    Log.d(TAG, "targetColor(${viewTarget.targetColor.red()},${viewTarget.targetColor.green()},${viewTarget.targetColor.blue()}) from  viewTarget(${viewTarget.xScaled},${viewTarget.yScaled})")
+                    Log.d(TAG, "scaledTarget(${viewTarget.xScaled},${viewTarget.yScaled})")
+                    //viewTarget.setTargetColor(bitmapBuffer.getColor(viewTarget.xScaled, viewTarget.yScaled))
+                    viewTarget.setTargetColor(getAverageColorFromBuffer(bitmapBuffer, viewTarget))
+
+                    Log.d(TAG, "targetColor(${viewTarget.targetColor.red()},${viewTarget.targetColor.green()},${viewTarget.targetColor.blue()}) at (${viewTarget.xScaled},${viewTarget.yScaled})")
 
                     resetTarget = false
                 } else {
 
                     // TODO: analyze image
                     //Log.d(TAG, "target(${viewTarget.xScaled},${viewTarget.yScaled})")
-                    val color = bitmapBuffer.getColor(viewTarget.xScaled, viewTarget.yScaled)
+                    //val color = bitmapBuffer.getColor(viewTarget.xScaled, viewTarget.yScaled)
                     //Log.d(TAG, "color(${color.red()},${color.green()},${color.blue()})")
                 }
 
@@ -175,15 +190,21 @@ class MainActivity : AppCompatActivity() {
         }, ContextCompat.getMainExecutor(this))
     }
 
-    private fun updateTarget(viewTarget: ViewTarget, x: Int, y: Int) {
-        // Update target rect to tapped point
-        Log.d(
-            TAG,
-            "Tapped point(${x}, ${y})"
-        )
+    private fun getAverageColorFromBuffer(bitmapBuffer: Bitmap, viewTarget: ViewTarget): Color {
+        var r: Float = 0f
+        var g: Float = 0f
+        var b: Float = 0f
 
-        viewTarget.x = x
-        viewTarget.y = y
+        for (x in viewTarget.xScaled-20..viewTarget.xScaled+20){
+            for (y in viewTarget.yScaled-20..viewTarget.yScaled+20) {
+                var color = bitmapBuffer.getColor(viewTarget.xScaled, viewTarget.yScaled)
+                r = (r + color.red()) / 2
+                g = (g + color.green()) / 2
+                b = (b + color.blue()) / 2
+            }
+        }
+
+        return Color.valueOf(r, g, b)
     }
 
     override fun onDestroy() {

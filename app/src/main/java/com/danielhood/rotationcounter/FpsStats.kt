@@ -1,11 +1,7 @@
 package com.danielhood.rotationcounter
 
-import android.Manifest
-import android.util.Log
-
 class FpsStats {
-    var currentFps: Float = 0f
-
+    private var currentFps: Float = 0f
     private var frameCounter = 0
     private var lastFpsTimestamp = System.currentTimeMillis()
 

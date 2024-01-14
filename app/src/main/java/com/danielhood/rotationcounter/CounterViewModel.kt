@@ -1,9 +1,5 @@
 package com.danielhood.rotationcounter
 
-import android.graphics.Rect
-import android.view.MotionEvent
-import android.view.View
-
 class CounterViewModel () {
     var rotationCount: Int = 0
     var currentFps: Float = 0f
